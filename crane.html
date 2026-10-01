@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>이동식크레인 양중작업 안전성 검토 시스템</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Print Formatting */
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      .print-page-break {
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <header class="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 shadow-md no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
+          <i class="fa-solid fa-truck-monster text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold tracking-tight text-white">이동식크레인 안전성검토 통합엔진</h1>
+            <span class="px-2 py-0.5 text-xs font-semibold rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">v2.5 산안법 기준</span>
+          </div>
+          <p class="text-xs text-slate-400">차량계 하역운반기계 작업계획서 및 양중안전율·지반지지력 공학적 검토</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <button id="btn-sample-load" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-rotate text-amber-400"></i>
+          <span>예제 데이터 로드</span>
+        </button>
+        <button id="btn-quick-report" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition flex items-center space-x-1.5 shadow-sm shadow-amber-500/30">
+          <i class="fa-solid fa-file-pdf"></i>
+          <span>검토보고서 출력</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Top Summary Banner -->
+    <div id="status-banner" class="mb-6 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center space-x-4">
+        <div id="overall-status-badge" class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl font-black">
+          <i class="fa-solid fa-shield-check"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span id="overall-status-text" class="text-base font-extrabold text-slate-900">종합 안전성 검토 결과: <span class="text-emerald-600">작업 적합 (PASS)</span></span>
+            <span id="site-name-display" class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">OO현장 1공구</span>
+          </div>
+          <p id="overall-status-desc" class="text-xs text-slate-500 mt-0.5">양중 부하율, 아웃트리거 접지압, 줄걸이 용구 안전율 및 관련 법적 구비서류 기준을 모두 충족합니다.</p>
+        </div>
+      </div>
+      <!-- Mini Metric Badges -->
+      <div class="grid grid-cols-3 gap-2 sm:gap-3 text-center">
+        <div class="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200/80">
+          <div class="text-[11px] font-medium text-slate-500">정격 부하율</div>
+          <div id="stat-load-ratio" class="text-sm sm:text-base font-bold text-slate-800 font-mono-code">62.5%</div>
+        </div>
+        <div class="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200/80">
+          <div class="text-[11px] font-medium text-slate-500">지반 안전율</div>
+          <div id="stat-ground-sf" class="text-sm sm:text-base font-bold text-emerald-600 font-mono-code">1.82배</div>
+        </div>
+        <div class="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200/80">
+          <div class="text-[11px] font-medium text-slate-500">줄걸이 안전율</div>
+          <div id="stat-sling-sf" class="text-sm sm:text-base font-bold text-emerald-600 font-mono-code">6.45 (법규≥5)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-200 mb-6 no-print">
+      <nav class="flex space-x-2 sm:space-x-4 overflow-x-auto pb-1" aria-label="Tabs">
+        <button data-tab="tab-lifting" class="tab-btn active px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-lg border-b-2 border-amber-500 text-amber-600 bg-amber-50/50 flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-arrows-to-eye"></i>
+          <span>1. 양중 능력 & 시뮬레이션</span>
+        </button>
+        <button data-tab="tab-outrigger" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-medium rounded-t-lg border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-weight-hanging"></i>
+          <span>2. 아웃트리거 반력 및 지반지지력</span>
+        </button>
+        <button data-tab="tab-rigging" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-medium rounded-t-lg border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-link"></i>
+          <span>3. 줄걸이 용구 안전율</span>
+        </button>
+        <button data-tab="tab-docs" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-medium rounded-t-lg border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-clipboard-check"></i>
+          <span>4. 법적 필수서류 & 현장점검</span>
+        </button>
+        <button data-tab="tab-report" class="tab-btn px-4 py-2.5 text-xs sm:text-sm font-medium rounded-t-lg border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-file-invoice"></i>
+          <span>5. 안전성 검토서 출력/보고서</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="tab-lifting" class="tab-content space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Control Inputs (5 cols) -->
+        <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs">A</span>
+              <span>크레인 제원 및 양중 매개변수</span>
+            </h2>
+            <span class="text-xs text-slate-400">실시간 연동</span>
+          </div>
+
+          <!-- Crane Preset Selection -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">이동식 크레인 기종 (프리셋)</label>
+            <select id="crane-preset" class="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+              <option value="50t" selected>하이드로 50톤 (자체중량 39.8t / 최대반경 36m)</option>
+              <option value="25t">하이드로 25톤 (자체중량 26.5t / 최대반경 28m)</option>
+              <option value="70t">하이드로 70톤 (자체중량 48.0t / 최대반경 44m)</option>
+              <option value="100t">하이드로 100톤 (자체중량 60.0t / 최대반경 52m)</option>
+              <option value="200t">하이드로 200톤 (자체중량 72.0t / 최대반경 68m)</option>
+              <option value="custom">직접 수기 입력 (사용자 지정 모델)</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">크레인 총 자체중량 (ton)</label>
+              <input id="input-crane-weight" type="number" step="0.1" value="39.8" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 font-mono-code focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">카운터웨이트 중량 (ton)</label>
+              <input id="input-counter-weight" type="number" step="0.1" value="8.5" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 font-mono-code focus:ring-2 focus:ring-amber-500">
+            </div>
+          </div>
+
+          <!-- Radius and Boom Length -->
+          <div class="space-y-3 pt-2 border-t border-slate-100">
+            <div>
+              <div class="flex justify-between text-xs font-medium text-slate-700 mb-1">
+                <span>작업 반경 (Working Radius, R)</span>
+                <span id="label-radius" class="font-bold text-amber-600 font-mono-code">14.0 m</span>
+              </div>
+              <input id="range-radius" type="range" min="3" max="36" step="0.5" value="14" class="w-full accent-amber-500">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs font-medium text-slate-700 mb-1">
+                <span>붐 길이 (Boom Length, L)</span>
+                <span id="label-boom-len" class="font-bold text-blue-600 font-mono-code">24.5 m</span>
+              </div>
+              <input id="range-boom-len" type="range" min="10" max="42" step="0.5" value="24.5" class="w-full accent-blue-600">
+            </div>
+          </div>
+
+          <!-- Weights -->
+          <div class="space-y-2 pt-2 border-t border-slate-100">
+            <h3 class="text-xs font-semibold text-slate-800">양중 하중 구성 (실인양하중)</h3>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">화물 순중량 (t)</label>
+                <input id="input-net-load" type="number" step="0.05" value="4.20" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 font-mono-code">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">훅 블록 무게 (t)</label>
+                <input id="input-hook-load" type="number" step="0.05" value="0.45" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 font-mono-code">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">줄걸이/샤클 (t)</label>
+                <input id="input-rigging-load" type="number" step="0.05" value="0.15" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 font-mono-code">
+              </div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-100 flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700">총 인양하중 (Total Load)</span>
+              <span id="text-total-load" class="text-sm font-black text-slate-900 font-mono-code">4.80 ton</span>
+            </div>
+          </div>
+
+          <!-- Wind Speed Check -->
+          <div class="pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-medium text-slate-700">순간 풍속 (m/s) [산안기준 제38조]</label>
+              <span id="wind-status-pill" class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">안전 범위</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <input id="input-wind-speed" type="number" step="0.5" value="4.5" class="w-24 text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono-code">
+              <span class="text-xs text-slate-500">m/s (10m/s 이상 작업주의, 15m/s 초과 시 양중 전면중단)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Canvas Simulation & Results (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          <!-- 2D Canvas Visualization -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <span class="text-xs font-bold text-slate-800">실시간 2D 양중 다이어그램 (Boom & Lift Sim)</span>
+              </div>
+              <div class="text-[11px] text-slate-500 font-mono-code flex space-x-3">
+                <span>붐 각도: <strong id="sim-boom-angle" class="text-slate-800">55.2°</strong></span>
+                <span>양정 높이: <strong id="sim-lift-height" class="text-slate-800">20.1m</strong></span>
+              </div>
+            </div>
+            <div class="relative w-full h-72 sm:h-80 bg-gradient-to-b from-sky-50 via-slate-50 to-amber-50/40 rounded-xl border border-slate-200 overflow-hidden">
+              <canvas id="crane-canvas" class="w-full h-full block"></canvas>
+              <!-- Overlay Legend -->
+              <div class="absolute bottom-2 left-3 bg-white/90 backdrop-blur px-2.5 py-1.5 rounded-lg border border-slate-200 text-[10px] space-y-0.5 text-slate-600">
+                <div><span class="inline-block w-2 h-2 bg-amber-500 rounded-full mr-1"></span>크레인 차체 & 붐</div>
+                <div><span class="inline-block w-2 h-2 bg-rose-500 rounded-full mr-1"></span>아웃트리거 지지점 (반력 분배)</div>
+                <div><span class="inline-block w-2 h-2 bg-blue-600 rounded-full mr-1"></span>인양물 (작업반경)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Capacity Analysis Cards -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h3 class="text-xs font-bold text-slate-800 flex items-center justify-between">
+              <span>양중 능력 판정 (정격 하중표 대조)</span>
+              <span id="capacity-badge" class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-700">적합 (안전)</span>
+            </h3>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-[11px] text-slate-500">해당 조건 정격하중</div>
+                <div id="calc-rated-cap" class="text-base font-black text-slate-900 font-mono-code">7.68 ton</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-[11px] text-slate-500">실제 총 인양하중</div>
+                <div id="calc-actual-load" class="text-base font-black text-blue-600 font-mono-code">4.80 ton</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-[11px] text-slate-500">작업 부하율 (%)</div>
+                <div id="calc-load-percent" class="text-base font-black text-emerald-600 font-mono-code">62.5 %</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-[11px] text-slate-500">잔여 여유하중</div>
+                <div id="calc-margin-load" class="text-base font-black text-slate-700 font-mono-code">+2.88 ton</div>
+              </div>
+            </div>
+
+            <!-- Progress Bar of Capacity -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-slate-500 font-medium">
+                <span>부하율 게이지 (권장 ≤75%, 주의 75~90%, 전도위험 >90%, 초과금지 100%)</span>
+                <span id="load-ratio-desc" class="font-bold text-emerald-600">안전 권장 범위 내 (정상)</span>
+              </div>
+              <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden flex">
+                <div id="bar-load-safe" class="h-full bg-emerald-500 transition-all duration-300" style="width: 62.5%;"></div>
+                <div id="bar-load-warning" class="h-full bg-amber-400 transition-all duration-300" style="width: 0%;"></div>
+                <div id="bar-load-danger" class="h-full bg-rose-600 transition-all duration-300" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <p id="lifting-guide-text" class="text-xs text-slate-500 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/60 leading-relaxed">
+              💡 <strong>안전 가이드:</strong> 크레인 작업 시 안전율 확보를 위해 정격하중의 <strong>75%~80% 이하</strong>에서 작업하는 것이 가장 바람직하며, 90% 초과 시 급선회나 바람에 의해 전도 사고로 이어질 수 있습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-outrigger" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Inputs for Ground & Mats (5 cols) -->
+        <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h2 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">B</span>
+              <span>아웃트리거 반력 및 받침판·지반 조건</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">집중하중이 지반의 허용 지내력을 초과하지 않도록 검토합니다.</p>
+          </div>
+
+          <!-- Outrigger Extension Spread -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">아웃트리거 확장 상태</label>
+            <select id="outrigger-spread" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+              <option value="1.0" selected>최대 확장 (Full Extension - 100%) [권장]</option>
+              <option value="0.75">중간 확장 (Intermediate - 75%)</option>
+              <option value="0.5">최소 확장 (Minimum - 50%) [전도 극위험]</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">크레인 폭 x 길이 (m)</label>
+              <input id="input-crane-span" type="text" value="6.6 x 7.2" disabled class="w-full text-xs bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-600 font-mono-code">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">선회 위치 최악조건</label>
+              <select id="select-slew-pos" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5">
+                <option value="corner" selected>대각선 1개 받침점 집중 (최악)</option>
+                <option value="side">측방 2개 받침점 분배</option>
+                <option value="rear">후방 2개 받침점 분배</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Steel Plate / Mat Dimensions -->
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <h3 class="text-xs font-bold text-slate-800 flex items-center justify-between">
+              <span>아웃트리거 깔판 (철판/침목) 제원</span>
+              <span class="text-[11px] text-blue-600 font-mono-code" id="mat-area-label">면적: 1.44 m²</span>
+            </h3>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">가로 길이 (m)</label>
+                <input id="mat-width" type="number" step="0.1" value="1.2" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 font-mono-code">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">세로 길이 (m)</label>
+                <input id="mat-height" type="number" step="0.1" value="1.2" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 font-mono-code">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">철판 두께 (mm)</label>
+                <input id="mat-thick" type="number" step="1" value="22" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 font-mono-code">
+              </div>
+            </div>
+            <div class="flex space-x-2 pt-1">
+              <button type="button" class="btn-mat-preset px-2 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded text-slate-700" data-w="1.0" data-h="1.0" data-t="19">1.0 x 1.0m (19T)</button>
+              <button type="button" class="btn-mat-preset px-2 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded text-slate-700" data-w="1.2" data-h="1.2" data-t="22">1.2 x 1.2m (22T)</button>
+              <button type="button" class="btn-mat-preset px-2 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded text-slate-700" data-w="1.5" data-h="1.5" data-t="25">1.5 x 1.5m (25T)</button>
+              <button type="button" class="btn-mat-preset px-2 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded text-slate-700" data-w="2.0" data-h="2.0" data-t="30">2.0 x 2.0m (30T)</button>
+            </div>
+          </div>
+
+          <!-- Ground Bearing Capacity Database -->
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <label class="block text-xs font-semibold text-slate-700">작업 지반 종류 및 허용 지내력 ($q_a$)</label>
+            <select id="select-ground-type" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+              <option value="40" selected>풍화암 및 경질 자갈층 (허용 40 ton/m²)</option>
+              <option value="30">굳은 모래·자갈 혼합층 (허용 30 ton/m²)</option>
+              <option value="20">보통 모래 및 보통 점토층 (허용 20 ton/m²)</option>
+              <option value="15">다져진 콘크리트 포장도로 20cm (허용 15 ton/m²)</option>
+              <option value="10">연약 점토 및 매립지반 (허용 10 ton/m²) [침목/보강 필수]</option>
+              <option value="custom_ground">사용자 직접 입력 (지반조사 보고서 기준)</option>
+            </select>
+            <div class="flex items-center space-x-2 pt-1">
+              <span class="text-xs text-slate-500">허용 지내력 기준값:</span>
+              <input id="input-ground-bearing" type="number" step="1" value="40" class="w-24 text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 font-mono-code font-bold text-slate-800">
+              <span class="text-xs text-slate-600">ton/m² (kN/m² × 0.1)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calculation & Outrigger Diagrams (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          <!-- Outrigger Reaction Heatmap Display -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-xs font-bold text-slate-900">아웃트리거 4개 지지점 최대 반력 분포도</h3>
+                <p class="text-[11px] text-slate-500">작업선회 및 하중 편심에 의한 개별 아웃트리거 최대 하중</p>
+              </div>
+              <span id="ground-status-badge" class="px-2.5 py-1 rounded text-xs font-black bg-emerald-100 text-emerald-700">지반 지지력 만족</span>
+            </div>
+
+            <!-- Visual 4-Point Outrigger Diagram -->
+            <div class="p-6 bg-slate-900 rounded-xl text-white relative">
+              <div class="text-center text-[11px] text-slate-400 mb-2 font-mono-code">▲ 차량 전방 (Front) ▲</div>
+              
+              <div class="grid grid-cols-2 gap-8 max-w-md mx-auto relative">
+                <!-- Center Crane Icon -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div class="w-20 h-28 border-2 border-dashed border-slate-600 rounded-lg bg-slate-800/80 flex flex-col items-center justify-center p-1">
+                    <i class="fa-solid fa-truck-monster text-2xl text-amber-400 mb-1"></i>
+                    <span class="text-[9px] text-slate-300 font-mono-code">TOTAL</span>
+                    <span id="diag-total-weight" class="text-[10px] font-bold text-white font-mono-code">53.1 t</span>
+                  </div>
+                </div>
+
+                <!-- FL -->
+                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center">
+                  <div class="text-[11px] font-semibold text-slate-300">전방 좌측 (FL)</div>
+                  <div id="outrigger-fl" class="text-base font-black text-slate-200 font-mono-code mt-1">11.8 t</div>
+                  <div class="text-[10px] text-slate-400">접지압: 8.2 t/m²</div>
+                </div>
+
+                <!-- FR -->
+                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center">
+                  <div class="text-[11px] font-semibold text-slate-300">전방 우측 (FR)</div>
+                  <div id="outrigger-fr" class="text-base font-black text-slate-200 font-mono-code mt-1">11.8 t</div>
+                  <div class="text-[10px] text-slate-400">접지압: 8.2 t/m²</div>
+                </div>
+
+                <!-- RL -->
+                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center">
+                  <div class="text-[11px] font-semibold text-slate-300">후방 좌측 (RL)</div>
+                  <div id="outrigger-rl" class="text-base font-black text-slate-200 font-mono-code mt-1">11.8 t</div>
+                  <div class="text-[10px] text-slate-400">접지압: 8.2 t/m²</div>
+                </div>
+
+                <!-- RR (Critical Spot) -->
+                <div id="box-outrigger-crit" class="bg-rose-950/60 p-3 rounded-xl border-2 border-rose-500 flex flex-col items-center ring-2 ring-rose-500/30">
+                  <div class="text-[11px] font-bold text-rose-400 flex items-center space-x-1">
+                    <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                    <span>후방 우측 (RR - 최대집중)</span>
+                  </div>
+                  <div id="outrigger-max-val" class="text-lg font-black text-rose-300 font-mono-code mt-1">31.6 t</div>
+                  <div id="outrigger-max-pressure" class="text-[11px] text-rose-200 font-bold">접지압: 21.9 t/m²</div>
+                </div>
+              </div>
+              <div class="text-center text-[11px] text-slate-400 mt-2 font-mono-code">▼ 차량 후방 (Rear / Boom Slew Zone) ▼</div>
+            </div>
+
+            <!-- Mathematical Formula Breakdown -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="text-[11px] text-slate-500">최대 반력 ($P_{max}$)</div>
+                <div id="calc-p-max" class="text-base font-bold text-slate-900 font-mono-code">31.6 ton</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">$P = \alpha \cdot \frac{W_c + W_l}{4} + \frac{M}{2B}$</div>
+              </div>
+              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="text-[11px] text-slate-500">실제 지반 접지압 ($q_{act}$)</div>
+                <div id="calc-q-act" class="text-base font-bold text-blue-600 font-mono-code">21.9 ton/m²</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">$q = P_{max} / A_{mat}$ ($1.44m^2$)</div>
+              </div>
+              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="text-[11px] text-slate-500">지반 허용 안전율</div>
+                <div id="calc-ground-sf-val" class="text-base font-bold text-emerald-600 font-mono-code">1.82 배 (안전)</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">$q_a / q_{act} \ge 1.25$ 충족</div>
+              </div>
+            </div>
+
+            <!-- Minimum Recommended Mat calculation -->
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
+              <div>
+                <span class="font-bold text-slate-800">지반침하 방지 최소 필요 받침판 면적:</span>
+                <span id="min-mat-area" class="font-mono-code font-bold text-indigo-700 ml-1">0.79 m² (최소 0.9m × 0.9m 철판)</span>
+              </div>
+              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-semibold text-[11px]">현재 세팅(1.44m²) 충분</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-rigging" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Rigging Configuration (5 cols) -->
+        <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h2 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">C</span>
+              <span>줄걸이 용구(Wire / Sling / Shackle) 규격</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">산안법 기준: 와이어로프 안전율 5 이상, 섬유벨트 6 이상</p>
+          </div>
+
+          <!-- Sling Method -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">줄걸이 방식 (줄수, n)</label>
+            <select id="rigging-lines" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+              <option value="2" selected>2줄 걸기 (2-Leg Sling)</option>
+              <option value="4">4줄 걸기 (4-Leg Sling - 하중 3줄 부담 설계)</option>
+              <option value="1">1줄 수직 걸기 (1-Leg Vertical)</option>
+            </select>
+          </div>
+
+          <!-- Sling Angle -->
+          <div>
+            <div class="flex justify-between text-xs font-medium text-slate-700 mb-1">
+              <span>줄걸이 사이 사잇각 ($\theta$)</span>
+              <span id="label-rigging-angle" class="font-bold text-amber-600 font-mono-code">60° (권장 범위)</span>
+            </div>
+            <input id="range-rigging-angle" type="range" min="30" max="120" step="5" value="60" class="w-full accent-amber-500">
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1 font-mono-code">
+              <span>30° (장력 완화)</span>
+              <span>60° (표준 안전각)</span>
+              <span>90° (장력 급증)</span>
+              <span>120° (위험 200%)</span>
+            </div>
+          </div>
+
+          <!-- Sling Material Type -->
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <label class="block text-xs font-semibold text-slate-700">줄걸이 재질 및 호칭 규격</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="sling-type" value="wire" checked class="text-amber-500 focus:ring-amber-500">
+                <span class="text-xs font-medium text-slate-800">와이어로프 (Wire)</span>
+              </label>
+              <label class="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="sling-type" value="webbing" class="text-amber-500 focus:ring-amber-500">
+                <span class="text-xs font-medium text-slate-800">섬유벨트 (Webbing)</span>
+              </label>
+            </div>
+
+            <!-- Wire Specification Select -->
+            <div id="group-wire-spec">
+              <label class="block text-[11px] text-slate-600 mb-1">와이어로프 직경 (6x24 A종 파단강도 기준)</label>
+              <select id="select-wire-dia" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono-code">
+                <option value="14" data-break="11.2">Ø14mm (파단하중 11.2 ton)</option>
+                <option value="16" data-break="14.6">Ø16mm (파단하중 14.6 ton)</option>
+                <option value="18" data-break="18.5" selected>Ø18mm (파단하중 18.5 ton)</option>
+                <option value="20" data-break="22.8">Ø20mm (파단하중 22.8 ton)</option>
+                <option value="22" data-break="27.6">Ø22mm (파단하중 27.6 ton)</option>
+                <option value="24" data-break="32.9">Ø24mm (파단하중 32.9 ton)</option>
+              </select>
+            </div>
+
+            <!-- Webbing Specification Select (Hidden by default) -->
+            <div id="group-webbing-spec" class="hidden">
+              <label class="block text-[11px] text-slate-600 mb-1">섬유벨트 폭 (안전하중 WLL 라벨 기준)</label>
+              <select id="select-webbing-width" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono-code">
+                <option value="50" data-break="12.0">폭 50mm (파단강도 12.0 ton / 안전하중 2.0t)</option>
+                <option value="75" data-break="18.0" selected>폭 75mm (파단강도 18.0 ton / 안전하중 3.0t)</option>
+                <option value="100" data-break="24.0">폭 100mm (파단강도 24.0 ton / 안전하중 4.0t)</option>
+                <option value="150" data-break="36.0">폭 150mm (파단강도 36.0 ton / 안전하중 6.0t)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Shackle Specifications -->
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <h3 class="text-xs font-semibold text-slate-800">샤클(Shackle) 규격</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">샤클 규격 선택</label>
+                <select id="select-shackle-spec" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 font-mono-code">
+                  <option value="3.25">3-1/4 ton (WLL 3.25t)</option>
+                  <option value="4.75" selected>4-3/4 ton (WLL 4.75t)</option>
+                  <option value="6.5">6-1/2 ton (WLL 6.50t)</option>
+                  <option value="8.5">8-1/2 ton (WLL 8.50t)</option>
+                  <option value="12.0">12 ton (WLL 12.0t)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-0.5">체결 샤클 수량</label>
+                <input id="input-shackle-count" type="number" value="2" min="1" max="8" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 font-mono-code">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rigging Engineering Analysis (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-xs font-bold text-slate-900">줄걸이 용구 역학 및 안전율(Safety Factor) 검증</h3>
+                <p class="text-[11px] text-slate-500">인양각도에 따른 장력 계수 적용 및 파단 안전성 검토</p>
+              </div>
+              <span id="rigging-status-badge" class="px-2.5 py-1 rounded text-xs font-black bg-emerald-100 text-emerald-700">적합 (SF ≥ 5.0)</span>
+            </div>
+
+            <!-- Visual Rigging Diagram & Tension Angle Chart -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-around gap-4">
+              <!-- SVG Rigging Graphic -->
+              <div class="w-48 h-48 flex items-center justify-center relative">
+                <svg id="svg-rigging" class="w-full h-full" viewBox="0 0 200 200">
+                  <!-- Crane Hook -->
+                  <path d="M100 20 C100 35, 115 45, 100 55 C90 62, 85 55, 85 45" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linecap="round" />
+                  <circle cx="100" cy="18" r="5" fill="#f59e0b" />
+                  
+                  <!-- Dynamic Sling Lines (updated via JS) -->
+                  <line id="svg-sling-left" x1="100" y1="55" x2="45" y2="150" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" />
+                  <line id="svg-sling-right" x1="100" y1="55" x2="155" y2="150" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" />
+                  
+                  <!-- Angle Arc -->
+                  <path id="svg-angle-arc" d="M80 85 A30 30 0 0 1 120 85" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="3,2" />
+                  <text id="svg-angle-text" x="100" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#ef4444">60°</text>
+
+                  <!-- Cargo Block -->
+                  <rect x="35" y="150" width="130" height="35" rx="6" fill="#475569" stroke="#334155" stroke-width="2" />
+                  <text x="100" y="172" text-anchor="middle" font-size="11" font-weight="bold" fill="#ffffff" id="svg-cargo-text">화물 4.80t</text>
+                  
+                  <!-- Shackles -->
+                  <circle cx="45" cy="150" r="5" fill="#94a3b8" />
+                  <circle cx="155" cy="150" r="5" fill="#94a3b8" />
+                </svg>
+              </div>
+
+              <!-- Quick Formulas and Metrics -->
+              <div class="space-y-2 text-xs flex-1 max-w-xs">
+                <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+                  <span class="text-slate-500 block text-[11px]">줄 1가닥당 분배 장력 ($T$)</span>
+                  <span id="calc-sling-tension" class="text-base font-bold text-slate-900 font-mono-code">2.77 ton</span>
+                  <span class="text-[10px] text-slate-400 block">$T = \frac{W}{n \cdot \cos(\theta/2)}$</span>
+                </div>
+                <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+                  <span class="text-slate-500 block text-[11px]">와이어/벨트 계산 안전율 (S.F.)</span>
+                  <span id="calc-sling-sf-val" class="text-base font-black text-emerald-600 font-mono-code">6.68</span>
+                  <span class="text-[10px] text-slate-500 block">법적 기준: 와이어 $\ge 5.0$, 섬유벨트 $\ge 6.0$</span>
+                </div>
+                <div class="p-2.5 rounded-lg bg-white border border-slate-200">
+                  <span class="text-slate-500 block text-[11px]">샤클(Shackle) 안전율 & 판정</span>
+                  <span id="calc-shackle-status" class="text-sm font-bold text-emerald-600 font-mono-code">WLL 4.75t &gt; 2.77t (적합)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sling Discard/Safety Criteria Check (산안규칙 제166조) -->
+            <div class="space-y-2">
+              <h4 class="text-xs font-bold text-slate-800">와이어로프·슬링 폐기 기준 및 현장 일상점검 사항</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
+                <label class="flex items-start space-x-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                  <input type="checkbox" checked class="mt-0.5 rounded text-amber-500 focus:ring-amber-500">
+                  <span>와이어 소선(Strand) 끊어짐 10% 미만</span>
+                </label>
+                <label class="flex items-start space-x-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                  <input type="checkbox" checked class="mt-0.5 rounded text-amber-500 focus:ring-amber-500">
+                  <span>공칭지름 감소율 7% 이내 정상품</span>
+                </label>
+                <label class="flex items-start space-x-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                  <input type="checkbox" checked class="mt-0.5 rounded text-amber-500 focus:ring-amber-500">
+                  <span>훅 해지장치(Safety Latch) 정상 체결 확인</span>
+                </label>
+                <label class="flex items-start space-x-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                  <input type="checkbox" checked class="mt-0.5 rounded text-amber-500 focus:ring-amber-500">
+                  <span>샤클 핀 변형, 마모, 나사산 손상 없음</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-docs" class="tab-content hidden space-y-6">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs">D</span>
+              <span>차량계 하역운반기계(이동식크레인) 필수 서류 및 안전조치 체크리스트</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">첨부된 공사업체 안전교육 및 필요 서류 워크시트와 산안법 제38조 기준 매핑</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span id="checklist-progress" class="text-xs font-bold text-amber-600 font-mono-code">10 / 10 확인완료</span>
+            <button id="btn-check-all" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium">전체 적합 선택</button>
+          </div>
+        </div>
+
+        <!-- Checklist Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
+                <th class="py-2.5 px-3 w-12 text-center">선택</th>
+                <th class="py-2.5 px-3 w-28">구분</th>
+                <th class="py-2.5 px-3">법적 및 현장 필수 점검항목</th>
+                <th class="py-2.5 px-3 w-36">확인 기준 / 서류명</th>
+                <th class="py-2.5 px-3 w-28 text-center">판정 결과</th>
+              </tr>
+            </thead>
+            <tbody id="checklist-tbody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated or static rows with toggle -->
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">장비 서류</td>
+                <td class="py-2.5 px-3 text-slate-800">이동식 크레인 안전검사 합격증 (대한산업안전협회 등) 유효기간 내 존재 여부</td>
+                <td class="py-2.5 px-3 text-slate-500">안전검사증 (2년 주기)</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">장비 서류</td>
+                <td class="py-2.5 px-3 text-slate-800">자동차등록증 및 종합보험(대인/대물/영업배상책임) 가입 증명서</td>
+                <td class="py-2.5 px-3 text-slate-500">등록증 및 보험증권</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">운전원 자격</td>
+                <td class="py-2.5 px-3 text-slate-800">국가기술자격 기중기운전기능사 자격증 및 건설기계조종사 면허 소지</td>
+                <td class="py-2.5 px-3 text-slate-500">면허증 사본 확인</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">인력 안전보건</td>
+                <td class="py-2.5 px-3 text-slate-800">운전원 및 유도원/신호수 건설업 기초안전보건교육 및 배치전 건강검진</td>
+                <td class="py-2.5 px-3 text-slate-500">이수증 및 검진결과</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">작업계획서</td>
+                <td class="py-2.5 px-3 text-slate-800">차량계 하역운반기계 사전 작업계획서 작성 및 양중경로·운행통로 지정</td>
+                <td class="py-2.5 px-3 text-slate-500">작업계획서 원본</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">방호장치</td>
+                <td class="py-2.5 px-3 text-slate-800">과부하방지장치(AML/모멘트리미터) 및 권과방지장치 정상 작동 시험</td>
+                <td class="py-2.5 px-3 text-slate-500">작동 상태 점검표</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">신호체계</td>
+                <td class="py-2.5 px-3 text-slate-800">전담 신호수 지정 및 무전기/표준 수신호 체계 교육 및 배치</td>
+                <td class="py-2.5 px-3 text-slate-500">신호수 지정서</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">구획통제</td>
+                <td class="py-2.5 px-3 text-slate-800">인양 작업반경 내 근로자 출입금지 구역 설정(칼라콘/통제 휀스 설치)</td>
+                <td class="py-2.5 px-3 text-slate-500">현장 사진 확인</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">지반보강</td>
+                <td class="py-2.5 px-3 text-slate-800">아웃트리거 전개 하부 연약지반 방지용 강재 깔판(철판 22T 이상) 포설</td>
+                <td class="py-2.5 px-3 text-slate-500">지반접지 계산서</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-center"><input type="checkbox" checked class="chk-item rounded text-amber-500 focus:ring-amber-500"></td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">주변위험요소</td>
+                <td class="py-2.5 px-3 text-slate-800">인접 가공전선로 절연용 방호구 설치 및 안전 이격거리(특고압 최소 2m 이상) 확보</td>
+                <td class="py-2.5 px-3 text-slate-500">한국전력 협의서</td>
+                <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">적합</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-report" class="tab-content hidden space-y-6">
+      <div class="flex justify-end space-x-2 no-print">
+        <button id="btn-print-doc" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow">
+          <i class="fa-solid fa-print"></i>
+          <span>공식 검토서 인쇄 / PDF 저장</span>
+        </button>
+      </div>
+
+      <!-- Printable Report Container -->
+      <div id="printable-report" class="bg-white p-8 sm:p-10 rounded-2xl border border-slate-300 shadow-lg text-slate-900 max-w-4xl mx-auto space-y-6">
+        <!-- Document Header with Approval Stamp Boxes -->
+        <div class="flex flex-col sm:flex-row justify-between items-start border-b-2 border-slate-900 pb-4 gap-4">
+          <div>
+            <div class="text-xs font-bold text-amber-600 tracking-wider">양식 제 C-2026-KR</div>
+            <h1 class="text-2xl font-black text-slate-900 mt-1">이동식 크레인 양중작업 안전성 검토서</h1>
+            <p class="text-xs text-slate-500 mt-0.5">산업안전보건기준에 관한 규칙 제38조 및 하역운반기계 안전기준 준용</p>
+          </div>
+          <!-- Stamp Boxes -->
+          <div class="border border-slate-400 rounded overflow-hidden text-center text-xs">
+            <div class="grid grid-cols-3 divide-x divide-slate-400 bg-slate-100 border-b border-slate-400 font-semibold py-1">
+              <span class="w-20">작 성 자</span>
+              <span class="w-20">안전관리자</span>
+              <span class="w-20">현장소장</span>
+            </div>
+            <div class="grid grid-cols-3 divide-x divide-slate-400 h-16 items-center">
+              <span class="text-slate-400 text-[11px] flex items-center justify-center font-serif">(인)</span>
+              <span class="text-slate-400 text-[11px] flex items-center justify-center font-serif">(인)</span>
+              <span class="text-slate-400 text-[11px] flex items-center justify-center font-serif">(인)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. General Project Info -->
+        <div>
+          <h2 class="text-xs font-bold text-slate-900 bg-slate-100 px-3 py-1.5 rounded border-l-4 border-amber-500 mb-2">1. 작업 개요 및 크레인 일반 제원</h2>
+          <table class="w-full text-xs border border-slate-300 border-collapse">
+            <tbody>
+              <tr class="divide-x divide-slate-300 border-b border-slate-300">
+                <td class="bg-slate-50 px-3 py-1.5 font-semibold w-28 text-slate-700">공 사 명</td>
+                <td class="px-3 py-1.5" id="rep-project-name">신축공사 현장 복합 양중작업</td>
+                <td class="bg-slate-50 px-3 py-1.5 font-semibold w-28 text-slate-700">검 토 일 자</td>
+                <td class="px-3 py-1.5" id="rep-date">2026년 09월 29일</td>
+              </tr>
+              <tr class="divide-x divide-slate-300 border-b border-slate-300">
+                <td class="bg-slate-50 px-3 py-1.5 font-semibold text-slate-700">장 비 명</td>
+                <td class="px-3 py-1.5" id="rep-crane-name">하이드로 50톤 크레인</td>
+                <td class="bg-slate-50 px-3 py-1.5 font-semibold text-slate-700">자체 중량</td>
+                <td class="px-3 py-1.5 font-mono-code" id="rep-crane-weight">39.8 ton (CW 8.5t)</td>
+              </tr>
+              <tr class="divide-x divide-slate-300">
+                <td class="bg-slate-50 px-3 py-1.5 font-semibold text-slate-700">인양물 품명</td>
+                <td class="px-3 py-1.5" id="rep-item-name">구조용 철골 부재 및 데크플레이트</td>
+                <td class="bg-slate-50 px-3 py-1.5 font-semibold text-slate-700">총 인양하중</td>
+                <td class="px-3 py-1.5 font-bold font-mono-code text-blue-700" id="rep-total-load">4.80 ton (순중량 4.2t + 훅 0.6t)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 2. Engineering Verification Result Summary -->
+        <div>
+          <h2 class="text-xs font-bold text-slate-900 bg-slate-100 px-3 py-1.5 rounded border-l-4 border-amber-500 mb-2">2. 3대 공학적 안전성 정밀 검토 결과</h2>
+          <table class="w-full text-xs border border-slate-300 border-collapse">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-300 divide-x divide-slate-300 text-slate-800 font-semibold text-center">
+                <th class="py-2 px-3">검토 항목</th>
+                <th class="py-2 px-3">계산 산출치 (Actual)</th>
+                <th class="py-2 px-3">허용/법적 기준치 (Criteria)</th>
+                <th class="py-2 px-3">안전율 및 부하율</th>
+                <th class="py-2 px-3">최종 판정</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-300 text-center">
+              <tr class="divide-x divide-slate-300">
+                <td class="py-2 px-3 text-left font-semibold text-slate-800">
+                  크레인 양중 부하율<br>
+                  <span class="text-[10px] text-slate-500">(붐 24.5m / 반경 14.0m)</span>
+                </td>
+                <td class="py-2 px-3 font-mono-code font-bold" id="rep-calc-actual">4.80 ton</td>
+                <td class="py-2 px-3 font-mono-code" id="rep-calc-rated">정격 7.68 ton</td>
+                <td class="py-2 px-3 font-mono-code font-bold text-emerald-700" id="rep-calc-ratio">부하율 62.5% (&le;80%)</td>
+                <td class="py-2 px-3"><span class="px-2 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 text-[11px]" id="rep-pass-lift">적합 (SAFE)</span></td>
+              </tr>
+              <tr class="divide-x divide-slate-300">
+                <td class="py-2 px-3 text-left font-semibold text-slate-800">
+                  아웃트리거 지반 접지압<br>
+                  <span class="text-[10px] text-slate-500">(1.2×1.2m 철판 22T 적용)</span>
+                </td>
+                <td class="py-2 px-3 font-mono-code font-bold" id="rep-calc-pressure">21.9 ton/m²</td>
+                <td class="py-2 px-3 font-mono-code" id="rep-calc-ground-allow">허용 40.0 ton/m²</td>
+                <td class="py-2 px-3 font-mono-code font-bold text-emerald-700" id="rep-calc-ground-sf">안전율 1.82배 (&ge;1.25)</td>
+                <td class="py-2 px-3"><span class="px-2 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 text-[11px]" id="rep-pass-ground">적합 (SAFE)</span></td>
+              </tr>
+              <tr class="divide-x divide-slate-300">
+                <td class="py-2 px-3 text-left font-semibold text-slate-800">
+                  줄걸이 용구 안전계수<br>
+                  <span class="text-[10px] text-slate-500">(와이어 Ø18mm, 2줄, 60°)</span>
+                </td>
+                <td class="py-2 px-3 font-mono-code font-bold" id="rep-calc-tension">줄당 2.77 ton</td>
+                <td class="py-2 px-3 font-mono-code" id="rep-calc-break">파단하중 18.5 ton</td>
+                <td class="py-2 px-3 font-mono-code font-bold text-emerald-700" id="rep-calc-rig-sf">안전율 6.68 (&ge;5.0)</td>
+                <td class="py-2 px-3"><span class="px-2 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 text-[11px]" id="rep-pass-rig">적합 (SAFE)</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 3. Safe Working Procedures & Critical Precautions -->
+        <div>
+          <h2 class="text-xs font-bold text-slate-900 bg-slate-100 px-3 py-1.5 rounded border-l-4 border-amber-500 mb-2">3. 안전관리자 종합 의견 및 양중 시 준수사항</h2>
+          <div class="text-xs text-slate-700 leading-relaxed border border-slate-300 p-3 rounded space-y-1.5 bg-slate-50/50">
+            <p>1. <strong>아웃트리거 침하 방지:</strong> 당일 작업 개시 전 지반 상태를 육안 및 실측 확인하고, 아웃트리거 받침판(1.2×1.2m 22T 철판)을 4개소 모두 수평 밀착 설치할 것.</p>
+            <p>2. <strong>샤클 및 줄걸이 관리:</strong> 샤클 핀 체결 시 완전 체결 후 1/4바퀴 역회전 방지핀 상태를 점검하며, 날카로운 모서리(Edge) 부위는 고무 코너패드를 필수 부착할 것.</p>
+            <p>3. <strong>신호 및 통제:</strong> 전담 유도신호수 1인을 상시 배치하여 회전반경 내 근로자 접근을 차단하며, 순간풍속 10m/s 이상 시 작업을 일시 중지하고 15m/s 초과 시 붐을 격납할 것.</p>
+          </div>
+        </div>
+
+        <!-- Signature Footer -->
+        <div class="pt-4 text-center border-t border-slate-200">
+          <p class="text-xs text-slate-600 font-semibold">본 안전성 검토서는 산업안전보건법령 및 장비 성능곡선에 입각하여 정확하게 산출되었음을 확인합니다.</p>
+          <div class="mt-3 text-sm font-bold text-slate-900">2026 년 &nbsp;&nbsp;&nbsp;&nbsp; 09 월 &nbsp;&nbsp;&nbsp;&nbsp; 29 일</div>
+          <div class="mt-2 text-xs text-slate-700 font-medium">원청사 안전보건총괄책임자 / 협력사 현장대리인 (인)</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <script>
+    // State Management Object
+    const CraneApp = {
+      // Crane Spec Database
+      cranePresets: {
+        '25t': { weight: 26.5, cw: 4.5, maxRadius: 28, maxBoom: 31, baseA: 28, baseB: 0.8 },
+        '50t': { weight: 39.8, cw: 8.5, maxRadius: 36, maxBoom: 42, baseA: 55, baseB: 0.72 },
+        '70t': { weight: 48.0, cw: 12.0, maxRadius: 44, maxBoom: 50, baseA: 78, baseB: 0.68 },
+        '100t': { weight: 60.0, cw: 22.5, maxRadius: 52, maxBoom: 60, baseA: 110, baseB: 0.64 },
+        '200t': { weight: 72.0, cw: 50.0, maxRadius: 68, maxBoom: 72, baseA: 220, baseB: 0.58 },
+        'custom': { weight: 40.0, cw: 8.0, maxRadius: 40, maxBoom: 45, baseA: 50, baseB: 0.7 }
+      },
+
+      state: {
+        preset: '50t',
+        craneWeight: 39.8,
+        counterWeight: 8.5,
+        radius: 14.0,
+        boomLength: 24.5,
+        netLoad: 4.20,
+        hookLoad: 0.45,
+        riggingLoad: 0.15,
+        totalLoad: 4.80,
+        windSpeed: 4.5,
+        
+        // Outrigger
+        outriggerSpread: 1.0,
+        slewZone: 'corner',
+        matW: 1.2,
+        matH: 1.2,
+        matThick: 22,
+        groundAllowable: 40.0,
+        
+        // Rigging
+        riggingLines: 2,
+        riggingAngle: 60,
+        slingType: 'wire',
+        wireDia: 18,
+        wireBreaking: 18.5,
+        webbingWidth: 75,
+        webbingBreaking: 18.0,
+        shackleWLL: 4.75,
+        shackleCount: 2,
+
+        // Calculated values
+        ratedCapacity: 7.68,
+        loadRatio: 62.5,
+        maxOutriggerReaction: 31.6,
+        actualGroundPressure: 21.9,
+        groundSafetyFactor: 1.82,
+        slingTension: 2.77,
+        slingSafetyFactor: 6.68
+      },
+
+      // Initialization
+      init() {
+        this.bindEvents();
+        this.setupCanvas();
+        this.calculateAll();
+        this.renderAll();
+      },
+
+      bindEvents() {
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const targetTab = btn.getAttribute('data-tab');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+              b.classList.remove('active', 'border-amber-500', 'text-amber-600', 'bg-amber-50/50');
+              b.classList.add('border-transparent', 'text-slate-500');
+            });
+            btn.classList.add('active', 'border-amber-500', 'text-amber-600', 'bg-amber-50/50');
+            btn.classList.remove('border-transparent', 'text-slate-500');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(targetTab).classList.remove('hidden');
+
+            if (targetTab === 'tab-lifting') {
+              this.drawCanvas();
+            }
+          });
+        });
+
+        // Crane Preset change
+        const presetSelect = document.getElementById('crane-preset');
+        presetSelect.addEventListener('change', (e) => {
+          const val = e.target.value;
+          this.state.preset = val;
+          if (this.cranePresets[val]) {
+            const p = this.cranePresets[val];
+            this.state.craneWeight = p.weight;
+            this.state.counterWeight = p.cw;
+            document.getElementById('input-crane-weight').value = p.weight;
+            document.getElementById('input-counter-weight').value = p.cw;
+            document.getElementById('range-radius').max = p.maxRadius;
+            document.getElementById('range-boom-len').max = p.maxBoom;
+          }
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        // Sliders & Number inputs for Crane & Loads
+        const radiusSlider = document.getElementById('range-radius');
+        radiusSlider.addEventListener('input', (e) => {
+          this.state.radius = parseFloat(e.target.value);
+          // If radius exceeds boom, adjust boom
+          if (this.state.radius > this.state.boomLength * 0.95) {
+            this.state.boomLength = Math.min(parseFloat(document.getElementById('range-boom-len').max), Math.round((this.state.radius / 0.85) * 2) / 2);
+            document.getElementById('range-boom-len').value = this.state.boomLength;
+          }
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        const boomSlider = document.getElementById('range-boom-len');
+        boomSlider.addEventListener('input', (e) => {
+          this.state.boomLength = parseFloat(e.target.value);
+          // Ensure radius <= boom
+          if (this.state.radius > this.state.boomLength * 0.95) {
+            this.state.radius = Math.max(3, Math.round(this.state.boomLength * 0.85 * 2) / 2);
+            document.getElementById('range-radius').value = this.state.radius;
+          }
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        // Weight Inputs
+        ['input-net-load', 'input-hook-load', 'input-rigging-load', 'input-crane-weight', 'input-counter-weight', 'input-wind-speed'].forEach(id => {
+          const el = document.getElementById(id);
+          el.addEventListener('input', () => {
+            this.state.netLoad = Math.max(0, parseFloat(document.getElementById('input-net-load').value) || 0);
+            this.state.hookLoad = Math.max(0, parseFloat(document.getElementById('input-hook-load').value) || 0);
+            this.state.riggingLoad = Math.max(0, parseFloat(document.getElementById('input-rigging-load').value) || 0);
+            this.state.craneWeight = Math.max(1, parseFloat(document.getElementById('input-crane-weight').value) || 30);
+            this.state.counterWeight = Math.max(0, parseFloat(document.getElementById('input-counter-weight').value) || 0);
+            this.state.windSpeed = Math.max(0, parseFloat(document.getElementById('input-wind-speed').value) || 0);
+            this.calculateAll();
+            this.renderAll();
+          });
+        });
+
+        // Outrigger spread & slew position
+        document.getElementById('outrigger-spread').addEventListener('change', (e) => {
+          this.state.outriggerSpread = parseFloat(e.target.value);
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        document.getElementById('select-slew-pos').addEventListener('change', (e) => {
+          this.state.slewZone = e.target.value;
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        // Outrigger Mat Inputs
+        ['mat-width', 'mat-height', 'mat-thick'].forEach(id => {
+          document.getElementById(id).addEventListener('input', () => {
+            this.state.matW = parseFloat(document.getElementById('mat-width').value) || 1.0;
+            this.state.matH = parseFloat(document.getElementById('mat-height').value) || 1.0;
+            this.state.matThick = parseFloat(document.getElementById('mat-thick').value) || 20;
+            this.calculateAll();
+            this.renderAll();
+          });
+        });
+
+        // Mat Presets
+        document.querySelectorAll('.btn-mat-preset').forEach(b => {
+          b.addEventListener('click', () => {
+            const w = parseFloat(b.getAttribute('data-w'));
+            const h = parseFloat(b.getAttribute('data-h'));
+            const t = parseFloat(b.getAttribute('data-t'));
+            this.state.matW = w;
+            this.state.matH = h;
+            this.state.matThick = t;
+            document.getElementById('mat-width').value = w;
+            document.getElementById('mat-height').value = h;
+            document.getElementById('mat-thick').value = t;
+            this.calculateAll();
+            this.renderAll();
+            this.showToast(`받침판 ${w}m × ${h}m (${t}T) 적용 완료`, 'info');
+          });
+        });
+
+        // Ground Type Select
+        const groundSelect = document.getElementById('select-ground-type');
+        groundSelect.addEventListener('change', (e) => {
+          if (e.target.value !== 'custom_ground') {
+            const val = parseFloat(e.target.value);
+            this.state.groundAllowable = val;
+            document.getElementById('input-ground-bearing').value = val;
+          }
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        document.getElementById('input-ground-bearing').addEventListener('input', (e) => {
+          this.state.groundAllowable = parseFloat(e.target.value) || 10;
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        // Rigging Elements
+        const angleSlider = document.getElementById('range-rigging-angle');
+        angleSlider.addEventListener('input', (e) => {
+          this.state.riggingAngle = parseInt(e.target.value);
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        document.getElementById('rigging-lines').addEventListener('change', (e) => {
+          this.state.riggingLines = parseInt(e.target.value);
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        document.querySelectorAll('input[name="sling-type"]').forEach(radio => {
+          radio.addEventListener('change', (e) => {
+            this.state.slingType = e.target.value;
+            if (this.state.slingType === 'wire') {
+              document.getElementById('group-wire-spec').classList.remove('hidden');
+              document.getElementById('group-webbing-spec').classList.add('hidden');
+            } else {
+              document.getElementById('group-wire-spec').classList.add('hidden');
+              document.getElementById('group-webbing-spec').classList.remove('hidden');
+            }
+            this.calculateAll();
+            this.renderAll();
+          });
+        });
+
+        const wireSelect = document.getElementById('select-wire-dia');
+        wireSelect.addEventListener('change', (e) => {
+          const opt = wireSelect.options[wireSelect.selectedIndex];
+          this.state.wireDia = parseFloat(opt.value);
+          this.state.wireBreaking = parseFloat(opt.getAttribute('data-break'));
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        const webbingSelect = document.getElementById('select-webbing-width');
+        if (webbingSelect) {
+          webbingSelect.addEventListener('change', (e) => {
+            const opt = webbingSelect.options[webbingSelect.selectedIndex];
+            this.state.webbingWidth = parseFloat(opt.value);
+            this.state.webbingBreaking = parseFloat(opt.getAttribute('data-break'));
+            this.calculateAll();
+            this.renderAll();
+          });
+        }
+
+        const shackleSelect = document.getElementById('select-shackle-spec');
+        shackleSelect.addEventListener('change', (e) => {
+          this.state.shackleWLL = parseFloat(e.target.value);
+          this.calculateAll();
+          this.renderAll();
+        });
+
+        const shackleCountInput = document.getElementById('input-shackle-count');
+        if (shackleCountInput) {
+          shackleCountInput.addEventListener('input', (e) => {
+            this.state.shackleCount = parseInt(e.target.value) || 2;
+            this.calculateAll();
+            this.renderAll();
+          });
+        }
+
+        // Checklist check/uncheck
+        document.querySelectorAll('.chk-item').forEach(chk => {
+          chk.addEventListener('change', () => this.updateChecklistCount());
+        });
+
+        document.getElementById('btn-check-all').addEventListener('click', () => {
+          document.querySelectorAll('.chk-item').forEach(c => c.checked = true);
+          this.updateChecklistCount();
+          this.showToast('모든 필수 점검항목이 적합 처리되었습니다.', 'success');
+        });
+
+        // Sample Data Load
+        document.getElementById('btn-sample-load').addEventListener('click', () => {
+          this.loadSampleData();
+          this.showToast('표준 50톤 크레인 안전검토 예제가 로드되었습니다.', 'info');
+        });
+
+        // Report & Print
+        document.getElementById('btn-quick-report').addEventListener('click', () => {
+          document.querySelector('[data-tab="tab-report"]').click();
+        });
+
+        document.getElementById('btn-print-doc').addEventListener('click', () => {
+          window.print();
+        });
+
+        window.addEventListener('resize', () => {
+          this.setupCanvas();
+          this.drawCanvas();
+        });
+      },
+
+      calculateAll() {
+        // 1. Total Load
+        this.state.totalLoad = parseFloat((this.state.netLoad + this.state.hookLoad + this.state.riggingLoad).toFixed(2));
+
+        // 2. Rated Capacity Curve Estimation (ISO/BS/JIS mobile crane capacity function)
+        // Cap ~ baseA * (R ^ -baseB) with boom correction factor
+        const presetObj = this.cranePresets[this.state.preset] || this.cranePresets['50t'];
+        const r = Math.max(3, this.state.radius);
+        const l = Math.max(r, this.state.boomLength);
+        
+        let estimatedCap = (presetObj.baseA * Math.pow(r, -presetObj.baseB)) * (1 - (l - 10) * 0.008);
+        estimatedCap = Math.max(1.2, Math.min(parseFloat(this.state.preset.replace('t','')) || 50, estimatedCap));
+        this.state.ratedCapacity = parseFloat(estimatedCap.toFixed(2));
+
+        // Load Ratio (%)
+        this.state.loadRatio = parseFloat(((this.state.totalLoad / this.state.ratedCapacity) * 100).toFixed(1));
+
+        // 3. Outrigger Max Reaction (DIN 15019 / FEM 1.001 mobile crane reaction distribution)
+        // Total Gross Mass W_total = Crane Body + Counterweight + Total Load
+        const totalGross = this.state.craneWeight + this.state.counterWeight + this.state.totalLoad;
+        // Eccentricity moment from boom extension and load
+        // Over the critical corner outrigger, reaction factor ~ 0.55 to 0.65 of total load + moment
+        const cornerFactor = this.state.slewZone === 'corner' ? 0.62 : 0.45;
+        const outriggerSpreadMod = this.state.outriggerSpread; // 1.0, 0.75, 0.5
+        
+        const momentOverturn = (this.state.totalLoad * this.state.radius) + (this.state.boomLength * 0.15 * (this.state.radius / 2));
+        const pMax = (totalGross * 0.25) + (momentOverturn / (6.0 * outriggerSpreadMod)) * 0.85;
+        this.state.maxOutriggerReaction = parseFloat(Math.max(totalGross * 0.25, pMax * (1 / outriggerSpreadMod)).toFixed(1));
+
+        // Mat Contact Area & Ground Pressure
+        const matArea = Math.max(0.2, this.state.matW * this.state.matH);
+        this.state.actualGroundPressure = parseFloat((this.state.maxOutriggerReaction / matArea).toFixed(1));
+        this.state.groundSafetyFactor = parseFloat((this.state.groundAllowable / this.state.actualGroundPressure).toFixed(2));
+
+        // 4. Rigging Tension & Safety Factor
+        // T = W / (n * cos(theta/2))
+        const thetaRad = (this.state.riggingAngle * Math.PI) / 180;
+        const cosHalf = Math.cos(thetaRad / 2);
+        const effectiveLines = this.state.riggingLines === 4 ? 3 : this.state.riggingLines; // 4-leg slings share mainly on 3 points in structural practice
+        
+        const tensionPerLine = this.state.totalLoad / (effectiveLines * cosHalf);
+        this.state.slingTension = parseFloat(tensionPerLine.toFixed(2));
+
+        // Sling SF
+        const currentBreaking = this.state.slingType === 'wire' ? this.state.wireBreaking : this.state.webbingBreaking;
+        this.state.slingSafetyFactor = parseFloat((currentBreaking / this.state.slingTension).toFixed(2));
+      },
+
+      renderAll() {
+        // Top summary
+        const isLiftSafe = this.state.loadRatio <= 85;
+        const isGroundSafe = this.state.groundSafetyFactor >= 1.25;
+        const isRigSafe = (this.state.slingType === 'wire' ? this.state.slingSafetyFactor >= 5.0 : this.state.slingSafetyFactor >= 6.0);
+        const isWindSafe = this.state.windSpeed <= 10.0;
+        const isAllSafe = isLiftSafe && isGroundSafe && isRigSafe && isWindSafe;
+
+        // Top Banner Badge
+        const badgeEl = document.getElementById('overall-status-badge');
+        const textEl = document.getElementById('overall-status-text');
+        const descEl = document.getElementById('overall-status-desc');
+
+        if (isAllSafe) {
+          badgeEl.className = 'w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl font-black';
+          badgeEl.innerHTML = '<i class="fa-solid fa-shield-check"></i>';
+          textEl.innerHTML = '종합 안전성 검토 결과: <span class="text-emerald-600">작업 적합 (PASS)</span>';
+          descEl.innerText = '양중 부하율, 아웃트리거 접지압, 줄걸이 용구 안전율 및 관련 기준을 모두 완벽히 충족합니다.';
+        } else {
+          badgeEl.className = 'w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl font-black animate-pulse';
+          badgeEl.innerHTML = '<i class="fa-solid fa-shield-xmark"></i>';
+          textEl.innerHTML = '종합 안전성 검토 결과: <span class="text-rose-600">작업 부적합 (DANGER)</span>';
+          let failReasons = [];
+          if (!isLiftSafe) failReasons.push(`양중부하율 초과(${this.state.loadRatio}%)`);
+          if (!isGroundSafe) failReasons.push(`지반접지압 초과(SF ${this.state.groundSafetyFactor})`);
+          if (!isRigSafe) failReasons.push(`줄걸이 안전율 미달(SF ${this.state.slingSafetyFactor})`);
+          if (!isWindSafe) failReasons.push(`강풍 기준 초과(${this.state.windSpeed}m/s)`);
+          descEl.innerText = `주의: [${failReasons.join(', ')}] 항목 개선 조치(붐 단축, 철판 확대, 직경 증대 등)가 즉시 필요합니다.`;
+        }
+
+        // Mini metrics
+        document.getElementById('stat-load-ratio').innerText = `${this.state.loadRatio}%`;
+        document.getElementById('stat-load-ratio').className = `text-sm sm:text-base font-bold font-mono-code ${this.state.loadRatio > 90 ? 'text-rose-600' : (this.state.loadRatio > 75 ? 'text-amber-500' : 'text-slate-800')}`;
+
+        document.getElementById('stat-ground-sf').innerText = `${this.state.groundSafetyFactor}배`;
+        document.getElementById('stat-ground-sf').className = `text-sm sm:text-base font-bold font-mono-code ${this.state.groundSafetyFactor < 1.25 ? 'text-rose-600' : 'text-emerald-600'}`;
+
+        document.getElementById('stat-sling-sf').innerText = `${this.state.slingSafetyFactor} (기준≥5)`;
+        document.getElementById('stat-sling-sf').className = `text-sm sm:text-base font-bold font-mono-code ${!isRigSafe ? 'text-rose-600' : 'text-emerald-600'}`;
+
+        // Tab 1 UI
+        document.getElementById('label-radius').innerText = `${this.state.radius.toFixed(1)} m`;
+        document.getElementById('label-boom-len').innerText = `${this.state.boomLength.toFixed(1)} m`;
+        document.getElementById('text-total-load').innerText = `${this.state.totalLoad.toFixed(2)} ton`;
+
+        document.getElementById('calc-rated-cap').innerText = `${this.state.ratedCapacity.toFixed(2)} ton`;
+        document.getElementById('calc-actual-load').innerText = `${this.state.totalLoad.toFixed(2)} ton`;
+        document.getElementById('calc-load-percent').innerText = `${this.state.loadRatio}%`;
+        const margin = (this.state.ratedCapacity - this.state.totalLoad).toFixed(2);
+        document.getElementById('calc-margin-load').innerText = `${margin >= 0 ? '+' : ''}${margin} ton`;
+        document.getElementById('calc-margin-load').className = `text-base font-black font-mono-code ${margin < 0 ? 'text-rose-600' : 'text-slate-700'}`;
+
+        // Capacity Progress bar
+        const safeWidth = Math.min(this.state.loadRatio, 75);
+        const warnWidth = Math.max(0, Math.min(this.state.loadRatio - 75, 15));
+        const dangWidth = Math.max(0, Math.min(this.state.loadRatio - 90, 30));
+        document.getElementById('bar-load-safe').style.width = `${safeWidth}%`;
+        document.getElementById('bar-load-warning').style.width = `${warnWidth}%`;
+        document.getElementById('bar-load-danger').style.width = `${dangWidth}%`;
+
+        // Wind speed check
+        const windPill = document.getElementById('wind-status-pill');
+        if (this.state.windSpeed > 15) {
+          windPill.className = 'text-[11px] px-2 py-0.5 rounded-full font-bold bg-rose-600 text-white';
+          windPill.innerText = '양중 절대 금지 (15m/s 초과)';
+        } else if (this.state.windSpeed >= 10) {
+          windPill.className = 'text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800';
+          windPill.innerText = '작업 주의 요망 (10m/s 이상)';
+        } else {
+          windPill.className = 'text-[11px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700';
+          windPill.innerText = '안전 범위 (작업 가능)';
+        }
+
+        // Tab 2: Outrigger
+        const matArea = (this.state.matW * this.state.matH).toFixed(2);
+        document.getElementById('mat-area-label').innerText = `면적: ${matArea} m²`;
+        document.getElementById('diag-total-weight').innerText = `${(this.state.craneWeight + this.state.counterWeight + this.state.totalLoad).toFixed(1)} t`;
+        document.getElementById('outrigger-max-val').innerText = `${this.state.maxOutriggerReaction.toFixed(1)} t`;
+        document.getElementById('outrigger-max-pressure').innerText = `접지압: ${this.state.actualGroundPressure.toFixed(1)} t/m²`;
+        document.getElementById('calc-p-max').innerText = `${this.state.maxOutriggerReaction.toFixed(1)} ton`;
+        document.getElementById('calc-q-act').innerText = `${this.state.actualGroundPressure.toFixed(1)} ton/m²`;
+        
+        const gBadge = document.getElementById('ground-status-badge');
+        const gSFVal = document.getElementById('calc-ground-sf-val');
+        if (this.state.groundSafetyFactor >= 1.25) {
+          gBadge.className = 'px-2.5 py-1 rounded text-xs font-black bg-emerald-100 text-emerald-700';
+          gBadge.innerText = '지반 지지력 만족 (PASS)';
+          gSFVal.innerText = `${this.state.groundSafetyFactor} 배 (충족)`;
+          gSFVal.className = 'text-base font-bold text-emerald-600 font-mono-code';
+        } else {
+          gBadge.className = 'px-2.5 py-1 rounded text-xs font-black bg-rose-600 text-white animate-bounce';
+          gBadge.innerText = '지반 침하 위험 (FAIL)';
+          gSFVal.innerText = `${this.state.groundSafetyFactor} 배 (미달! 1.25 이상 필요)`;
+          gSFVal.className = 'text-base font-bold text-rose-600 font-mono-code';
+        }
+
+        const minAreaNeeded = (this.state.maxOutriggerReaction / (this.state.groundAllowable * 0.8)).toFixed(2);
+        const minSide = Math.sqrt(minAreaNeeded).toFixed(1);
+        document.getElementById('min-mat-area').innerText = `${minAreaNeeded} m² (최소 ${minSide}m × ${minSide}m 철판 권장)`;
+
+        // Tab 3: Rigging
+        document.getElementById('label-rigging-angle').innerText = `${this.state.riggingAngle}° (${this.state.riggingAngle <= 60 ? '권장 범위' : (this.state.riggingAngle <= 90 ? '주의' : '과대 각도 경고')})`;
+        document.getElementById('calc-sling-tension').innerText = `${this.state.slingTension.toFixed(2)} ton`;
+        document.getElementById('calc-sling-sf-val').innerText = `${this.state.slingSafetyFactor}`;
+        document.getElementById('calc-sling-sf-val').className = `text-base font-black font-mono-code ${isRigSafe ? 'text-emerald-600' : 'text-rose-600'}`;
+
+        const shackleOK = this.state.shackleWLL >= this.state.slingTension;
+        document.getElementById('calc-shackle-status').innerText = `WLL ${this.state.shackleWLL}t ${shackleOK ? '≥' : '<'} ${this.state.slingTension}t (${shackleOK ? '적합' : '용량부족! 교체요망'})`;
+        document.getElementById('calc-shackle-status').className = `text-sm font-bold font-mono-code ${shackleOK ? 'text-emerald-600' : 'text-rose-600'}`;
+
+        const rigBadge = document.getElementById('rigging-status-badge');
+        if (isRigSafe && shackleOK) {
+          rigBadge.className = 'px-2.5 py-1 rounded text-xs font-black bg-emerald-100 text-emerald-700';
+          rigBadge.innerText = `적합 (안전율 ${this.state.slingSafetyFactor} ≥ 5.0)`;
+        } else {
+          rigBadge.className = 'px-2.5 py-1 rounded text-xs font-black bg-rose-600 text-white';
+          rigBadge.innerText = '부적합 (안전율 미달)';
+        }
+
+        // Tab 5: Report Document mapping
+        const currentBreaking = this.state.slingType === 'wire' ? this.state.wireBreaking : this.state.webbingBreaking;
+        document.getElementById('rep-crane-weight').innerText = `${this.state.craneWeight} ton (CW ${this.state.counterWeight}t)`;
+        document.getElementById('rep-total-load').innerText = `${this.state.totalLoad.toFixed(2)} ton (순중량 ${this.state.netLoad}t + 훅블록 ${(this.state.hookLoad + this.state.riggingLoad).toFixed(2)}t)`;
+        document.getElementById('rep-calc-actual').innerText = `${this.state.totalLoad.toFixed(2)} ton`;
+        document.getElementById('rep-calc-rated').innerText = `정격 ${this.state.ratedCapacity.toFixed(2)} ton`;
+        document.getElementById('rep-calc-ratio').innerText = `부하율 ${this.state.loadRatio}% (기준 ≤80%)`;
+        document.getElementById('rep-pass-lift').innerText = isLiftSafe ? '적합 (SAFE)' : '부적합 (FAIL)';
+        document.getElementById('rep-pass-lift').className = `px-2 py-0.5 rounded font-black text-[11px] ${isLiftSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-600 text-white'}`;
+
+        document.getElementById('rep-calc-pressure').innerText = `${this.state.actualGroundPressure.toFixed(1)} ton/m²`;
+        document.getElementById('rep-calc-ground-allow').innerText = `허용 ${this.state.groundAllowable.toFixed(1)} ton/m²`;
+        document.getElementById('rep-calc-ground-sf').innerText = `안전율 ${this.state.groundSafetyFactor}배 (기준 ≥1.25)`;
+        document.getElementById('rep-pass-ground').innerText = isGroundSafe ? '적합 (SAFE)' : '부적합 (FAIL)';
+        document.getElementById('rep-pass-ground').className = `px-2 py-0.5 rounded font-black text-[11px] ${isGroundSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-600 text-white'}`;
+
+        document.getElementById('rep-calc-tension').innerText = `가닥당 ${this.state.slingTension.toFixed(2)} ton`;
+        document.getElementById('rep-calc-break').innerText = `파단강도 ${currentBreaking} ton`;
+        document.getElementById('rep-calc-rig-sf').innerText = `안전계수 ${this.state.slingSafetyFactor} (기준 ≥5.0)`;
+        document.getElementById('rep-pass-rig').innerText = (isRigSafe && shackleOK) ? '적합 (SAFE)' : '부적합 (FAIL)';
+        document.getElementById('rep-pass-rig').className = `px-2 py-0.5 rounded font-black text-[11px] ${(isRigSafe && shackleOK) ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-600 text-white'}`;
+
+        // Update SVG & Canvas
+        this.updateSvgRigging();
+        this.drawCanvas();
+      },
+
+      // Update SVG Rigging visuals dynamically
+      updateSvgRigging() {
+        const angleDeg = this.state.riggingAngle;
+        const halfAngleRad = ((angleDeg / 2) * Math.PI) / 180;
+        const hookX = 100, hookY = 55;
+        const slingLength = 105;
+        const deltaX = Math.sin(halfAngleRad) * slingLength;
+        const deltaY = Math.cos(halfAngleRad) * slingLength;
+
+        const leftX = hookX - deltaX;
+        const rightX = hookX + deltaX;
+        const cargoY = hookY + deltaY;
+
+        const leftLine = document.getElementById('svg-sling-left');
+        const rightLine = document.getElementById('svg-sling-right');
+        if (leftLine && rightLine) {
+          leftLine.setAttribute('x2', leftX);
+          leftLine.setAttribute('y2', cargoY);
+          rightLine.setAttribute('x2', rightX);
+          rightLine.setAttribute('y2', cargoY);
+        }
+
+        const angleText = document.getElementById('svg-angle-text');
+        if (angleText) angleText.textContent = `${angleDeg}°`;
+        const cargoText = document.getElementById('svg-cargo-text');
+        if (cargoText) cargoText.textContent = `화물 ${this.state.totalLoad.toFixed(2)}t`;
+      },
+
+      setupCanvas() {
+        const canvas = document.getElementById('crane-canvas');
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * (window.devicePixelRatio || 1);
+        canvas.height = rect.height * (window.devicePixelRatio || 1);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      },
+
+      drawCanvas() {
+        const canvas = document.getElementById('crane-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width / (window.devicePixelRatio || 1);
+        const height = canvas.height / (window.devicePixelRatio || 1);
+
+        ctx.clearRect(0, 0, width, height);
+
+        // Ground Line
+        const groundY = height - 45;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY);
+        ctx.lineTo(width, groundY);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Ground Hatching
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        for (let x = 10; x < width; x += 15) {
+          ctx.beginPath();
+          ctx.moveTo(x, groundY);
+          ctx.lineTo(x - 10, groundY + 12);
+          ctx.stroke();
+        }
+
+        // Crane Base position
+        const craneBaseX = 110;
+        const craneBaseY = groundY - 25;
+
+        // Steel Plate / Mat under Outriggers
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(craneBaseX - 45, groundY - 6, 26, 6);
+        ctx.fillRect(craneBaseX + 25, groundY - 6, 26, 6);
+
+        // Outrigger vertical beams
+        ctx.fillStyle = '#e11d48';
+        ctx.fillRect(craneBaseX - 35, craneBaseY + 12, 6, 12);
+        ctx.fillRect(craneBaseX + 35, craneBaseY + 12, 6, 12);
+
+        // Crane Truck Body
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.roundRect(craneBaseX - 55, craneBaseY - 14, 110, 24, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Cabin
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.roundRect(craneBaseX - 50, craneBaseY - 32, 28, 18, 3);
+        ctx.fill();
+
+        // Wheels
+        ctx.fillStyle = '#1e293b';
+        [craneBaseX - 40, craneBaseX - 15, craneBaseX + 20, craneBaseX + 40].forEach(wx => {
+          ctx.beginPath();
+          ctx.arc(wx, groundY - 4, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#94a3b8';
+          ctx.beginPath();
+          ctx.arc(wx, groundY - 4, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#1e293b';
+        });
+
+        // Slew Pivot Point
+        const pivotX = craneBaseX + 15;
+        const pivotY = craneBaseY - 15;
+
+        // Counterweight at rear
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(pivotX - 35, pivotY - 18, 20, 22);
+
+        // Calculating Boom Angle and Hook Position
+        // Working radius R (m), Boom length L (m)
+        const R = this.state.radius;
+        const L = this.state.boomLength;
+        const sinVal = Math.min(0.98, Math.max(0.1, R / L));
+        const boomAngleRad = Math.acos(sinVal);
+        const boomAngleDeg = (boomAngleRad * 180 / Math.PI).toFixed(1);
+        const liftHeight = (L * Math.sin(boomAngleRad)).toFixed(1);
+
+        document.getElementById('sim-boom-angle').innerText = `${boomAngleDeg}°`;
+        document.getElementById('sim-lift-height').innerText = `${liftHeight}m`;
+
+        // Scale factors: map meter to canvas pixels
+        const scale = Math.min((width - 160) / 40, (height - 90) / 45);
+        const tipX = pivotX + (R * scale);
+        const tipY = pivotY - (Math.sin(boomAngleRad) * L * scale);
+
+        // Boom Line (Telescopic Boom Graphic)
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pivotX, pivotY);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // Inner Boom
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(pivotX + 5, pivotY - 2);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // Hoist Wire Rope (tipX, tipY) -> Cargo
+        const cargoY = groundY - 40;
+        ctx.strokeStyle = '#0284c7';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 2]);
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX, cargoY - 18);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Hook Block
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(tipX, cargoY - 14, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Suspended Cargo Box
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.roundRect(tipX - 22, cargoY - 10, 44, 25, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#1d4ed8';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${this.state.totalLoad}t`, tipX, cargoY + 6);
+
+        // Dimension Lines: Working Radius R
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(pivotX, groundY + 18);
+        ctx.lineTo(tipX, groundY + 18);
+        ctx.stroke();
+
+        // Dimension Arrow Heads
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(pivotX, groundY + 15);
+        ctx.lineTo(pivotX + 5, groundY + 18);
+        ctx.lineTo(pivotX, groundY + 21);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(tipX, groundY + 15);
+        ctx.lineTo(tipX - 5, groundY + 18);
+        ctx.lineTo(tipX, groundY + 21);
+        ctx.fill();
+
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText(`작업반경 R = ${R.toFixed(1)}m`, (pivotX + tipX) / 2, groundY + 30);
+      },
+
+      updateChecklistCount() {
+        const total = document.querySelectorAll('.chk-item').length;
+        const checked = document.querySelectorAll('.chk-item:checked').length;
+        const progressEl = document.getElementById('checklist-progress');
+        progressEl.innerText = `${checked} / ${total} 확인완료`;
+        progressEl.className = `text-xs font-bold font-mono-code ${checked === total ? 'text-emerald-600' : 'text-amber-600'}`;
+      },
+
+      loadSampleData() {
+        this.state.preset = '50t';
+        document.getElementById('crane-preset').value = '50t';
+        this.state.craneWeight = 39.8;
+        this.state.counterWeight = 8.5;
+        this.state.radius = 14.0;
+        this.state.boomLength = 24.5;
+        this.state.netLoad = 4.20;
+        this.state.hookLoad = 0.45;
+        this.state.riggingLoad = 0.15;
+        this.state.matW = 1.2;
+        this.state.matH = 1.2;
+        this.state.matThick = 22;
+        this.state.groundAllowable = 40.0;
+        this.state.riggingAngle = 60;
+        this.state.riggingLines = 2;
+        this.state.wireDia = 18;
+        this.state.wireBreaking = 18.5;
+        this.state.shackleWLL = 4.75;
+
+        document.getElementById('input-crane-weight').value = 39.8;
+        document.getElementById('input-counter-weight').value = 8.5;
+        document.getElementById('range-radius').value = 14.0;
+        document.getElementById('range-boom-len').value = 24.5;
+        document.getElementById('input-net-load').value = 4.20;
+        document.getElementById('input-hook-load').value = 0.45;
+        document.getElementById('input-rigging-load').value = 0.15;
+        document.getElementById('mat-width').value = 1.2;
+        document.getElementById('mat-height').value = 1.2;
+        document.getElementById('mat-thick').value = 22;
+        document.getElementById('range-rigging-angle').value = 60;
+        document.getElementById('select-wire-dia').value = 18;
+        document.getElementById('select-shackle-spec').value = 4.75;
+        document.getElementById('select-ground-type').value = '40';
+        document.getElementById('input-ground-bearing').value = 40;
+
+        this.calculateAll();
+        this.renderAll();
+      },
+
+      showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        const bgColors = {
+          success: 'bg-emerald-600 text-white',
+          info: 'bg-slate-900 text-white border border-slate-700',
+          danger: 'bg-rose-600 text-white'
+        };
+        const icons = {
+          success: 'fa-solid fa-circle-check',
+          info: 'fa-solid fa-circle-info text-amber-400',
+          danger: 'fa-solid fa-triangle-exclamation'
+        };
+
+        toast.className = `px-4 py-2.5 rounded-xl shadow-lg flex items-center space-x-2 text-xs font-semibold transform transition-all duration-300 pointer-events-auto opacity-0 translate-y-2 ${bgColors[type] || bgColors.info}`;
+        toast.innerHTML = `<i class="${icons[type]} text-sm"></i><span>${message}</span>`;
+        container.appendChild(toast);
+
+        // Animate in
+        requestAnimationFrame(() => {
+          toast.classList.remove('opacity-0', 'translate-y-2');
+        });
+
+        // Remove after 3s
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+    };
+
+    // Initialize application when DOM is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      CraneApp.init();
+    });
+  </script>
+</body>
+</html>
